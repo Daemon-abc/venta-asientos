@@ -139,7 +139,16 @@ if df is not None and not df.empty:
     html_mapa = """
     <style>
         .mapa-contenedor { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
-        .fila-contenedor { display: flex; align-items: center; justify-content: center; gap: 2px; padding: 1px 0; }
+        .fila-contenedor { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 2px; 
+            padding: 1px 0; 
+            width: 100%;
+            overflow: hidden; /* 🆕 Evita que los pasillos vacíos se desborden hacia abajo */
+            white-space: nowrap; /* 🆕 Fuerza a que todo se quede estrictamente en una sola línea horizontal */
+        }
         .label-fila { font-weight: bold; width: 28px; color: #555; font-size: 11px; text-align: center; margin-right: 4px; }
         .asiento-link {
             display: inline-flex; align-items: center; justify-content: center;
@@ -157,11 +166,12 @@ if df is not None and not df.empty:
         }
         .seccion-titulo {
             font-weight: bold;
-            margin-top: 22px;
-            margin-bottom: 8px;
-            font-size: 13px;
+            margin-top: 10px;
+            margin-bottom: 4px;
+            font-size: 12px;
             text-align: center;
-            color: #2C3E50;
+            color: var(--text-color) !important; /* 🆕 Se adapta automáticamente a blanco o negro según el tema */
+            opacity: 0.85; /* Le da un toque sutil para que no sea un color tan chillón */
         }
         .escenario {
             background-color: #34495E;
@@ -171,7 +181,7 @@ if df is not None and not df.empty:
             font-weight: bold;
             font-size: 13px;
             border-radius: 4px;
-            margin-bottom: 15px;
+            margin-bottom: 6px; /* 🆕 Bajó de 15px a 6px para acercar el escenario a la Fila 1 */
             letter-spacing: 2px;
         }
         .col-disponible { background-color: #2ECC71 !important; } 
