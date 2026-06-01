@@ -164,22 +164,23 @@ elif st.session_state.pantalla == "formulario":
         celular = st.text_input("Celular:", value=obtener_valor('Celular'))
         vendedor = st.text_input("Vendedor:", value=obtener_valor('Vendedor'))
         cargado_por = st.text_input("Registrado Por:", value=obtener_valor('CargadoPor'))
-        imagen = st.text_input("Link de Comprobante:", value=obtener_valor('Imagen'))
-        
+               
         st.write("<br>", unsafe_allow_html=True)
         guardar = st.form_submit_button("Guardar Cambios 💾", use_container_width=True)
         
     if guardar:
         with st.spinner("Guardando en Supabase..."):
             if nuevo_estado == "Disponible":
+                # Se eliminó "Imagen": ""
                 datos_nuevos = {
                     "Estado": "Disponible", "Datos Cliente": "", "Celular": "",
-                    "Vendedor": "", "CargadoPor": "", "Imagen": "", "Fecha": ""
+                    "Vendedor": "", "CargadoPor": "", "Fecha": ""
                 }
             else:
+                # Se eliminó "Imagen": imagen
                 datos_nuevos = {
                     "Estado": nuevo_estado, "Datos Cliente": cliente, "Celular": celular,
-                    "Vendedor": vendedor, "CargadoPor": cargado_por, "Imagen": imagen,
+                    "Vendedor": vendedor, "CargadoPor": cargado_por,
                     "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 
