@@ -139,8 +139,8 @@ if st.session_state.pantalla == "mapa":
 elif st.session_state.pantalla == "formulario":
     b = st.session_state.asiento_seleccionado
     
-    st.title("📝 Editar Información")
-    st.subheader(f"📍 {b.get('Zona')} - Fila {b.get('Fila')}, Asiento {b.get('Asiento')}")
+    st.markdown("📝 Editar Información")
+    st.markdown(f"📍 {b.get('Zona')} - Fila {b.get('Fila')}, Asiento {b.get('Asiento')}")
     
     if st.button("⬅️ Volver al Mapa", use_container_width=True):
         st.session_state.pantalla = "mapa"
