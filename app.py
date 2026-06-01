@@ -60,7 +60,8 @@ def mostrar_formulario_modal(b):
         cliente = st.text_input("Nombre del Cliente:", value=obtener_valor('Datos Cliente'))
         celular = st.text_input("Celular:", value=obtener_valor('Celular'))
         vendedor = st.text_input("Vendedor:", value=obtener_valor('Vendedor'))
-        cargado_por = st.text_input("Registrado Por:", value=obtener_valor('CargadoPor'))
+        
+        # 'Registrado Por' eliminado de aquí
                 
         st.write("<br>", unsafe_allow_html=True)
         guardar = st.form_submit_button("Guardar Cambios 💾", use_container_width=True)
@@ -70,13 +71,12 @@ def mostrar_formulario_modal(b):
             if nuevo_estado == "Disponible":
                 datos_nuevos = {
                     "Estado": "Disponible", "Datos Cliente": "", "Celular": "",
-                    "Vendedor": "", "CargadoPor": "", "Fecha": ""
+                    "Vendedor": "", "Fecha": ""
                 }
             else:
                 datos_nuevos = {
                     "Estado": nuevo_estado, "Datos Cliente": cliente, "Celular": celular,
-                    "Vendedor": vendedor, "CargadoPor": cargado_por,
-                    "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    "Vendedor": vendedor, "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 
             conn.table("butacas").update(datos_nuevos).eq("ID_Asiento", b['ID_Asiento']).execute()
@@ -95,7 +95,6 @@ if "sel_id" in query_params:
     if df is not None and not df.empty:
         asiento_local = df[df['ID_Asiento'] == id_id]
         if not asiento_local.empty:
-            # En lugar de cambiar de pantalla, disparamos el Modal Flotante directamente
             mostrar_formulario_modal(asiento_local.iloc[0].to_dict())
 
 
@@ -159,11 +158,11 @@ if df is not None and not df.empty:
         .col-bloqueado { background-color: #7F8C8D !important; }   
     </style>
     <div class="mapa-contenedor">
-        <div class="escenario">🎬 ESCENARIO</div>
+        <div class="escenario">ESCENARIO</div>
     """
 
     # --- 1. TITULO: VIP ---
-    html_mapa += '<div class="seccion-titulo">📌 ZONA VIP</div>'
+    html_mapa += '<div class="seccion-titulo">VIP</div>'
     
     estructura_inferior = {
         1: {"v_izq": 4, "asientos": (19, 1), "v_der": 2},
@@ -200,12 +199,12 @@ if df is not None and not df.empty:
         html_mapa += '</div>'
         
         if f == 7:
-            html_mapa += '<div class="seccion-titulo">📌 ZONA PLATEA</div>'
+            html_mapa += '<div class="seccion-titulo">ZONA PLATEA</div>'
 
     # --- 2. TITULO: MEZZANINE ---
     df_mezz = df[df['Zona'] == 'MEZZANINE']
     if not df_mezz.empty:
-        html_mapa += '<div class="seccion-titulo">📌 MEZZANINE</div>'
+        html_mapa += '<div class="seccion-titulo">MEZZANINE</div>'
         
         estructura_mezz = {
             4: [("v", 0), ("a", (12, 7)), ("v", 13), ("a", (6, 1)), ("v", 0)],
