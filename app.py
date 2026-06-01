@@ -120,18 +120,34 @@ if "sel_id" in query_params:
             mostrar_formulario_modal(asiento_local.iloc[0].to_dict())
 
 
+## =========================================================================
+# PANTALLA PRINCIPAL: MAPA (Fuerza Bruta en una sola línea)
 # =========================================================================
-# PANTALLA PRINCIPAL: MAPA
-# =========================================================================
-st.markdown("<h3 style='margin-bottom: 0px;'>💺 Mapa de Asientos</h3>", unsafe_allow_html=True)
 
-col_tit, col_ref = st.columns([4, 1])
-with col_tit:
-    st.caption("Toca un asiento de color para editar su información.")
-with col_ref:
-    if st.button("🔄", help="Actualizar mapa"):
-        cargar_datos_db(forzar=True)
-        st.rerun()
+# Usamos un contenedor HTML flexible que agrupa el título a la izquierda y el botón de refrescar nativo de Streamlit
+st.markdown("""
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+        <h3 style="margin: 0; padding: 0;">💺 Mapa de Asientos</h3>
+        <a href="?refresh=true" target="_self" style="
+            text-decoration: none; 
+            background-color: var(--secondary-background-color, #f0f2f6); 
+            color: var(--text-color, #31333F); 
+            padding: 4px 10px; 
+            border-radius: 4px; 
+            font-size: 14px; 
+            font-weight: bold;
+            border: 1px solid rgba(49, 51, 63, 0.2);
+        ">🔄</a>
+    </div>
+""", unsafe_allow_html=True)
+
+
+# Capturamos si le dieron clic al botón 🔄 inyectado en el HTML
+if st.query_params.get("refresh") == "true":
+    st.query_params.clear()  # Limpiamos la URL de inmediato
+    cargar_datos_db(forzar=True)
+    st.rerun()
+
 
 df = st.session_state.datos_butacas
 
@@ -142,36 +158,52 @@ if df is not None and not df.empty:
         .fila-contenedor { 
             display: flex; 
             align-items: center; 
-            justify-content: center; 
-            gap: 2px; 
+            justify-content: flex-start; /* 🆕 Cambiamos de center a flex-start */
+            gap: 1px;                    /* 🆕 Quitamos el gap automático */
             padding: 1px 0; 
             width: 100%;
-            overflow: hidden; /* 🆕 Evita que los pasillos vacíos se desborden hacia abajo */
-            white-space: nowrap; /* 🆕 Fuerza a que todo se quede estrictamente en una sola línea horizontal */
+            overflow: hidden; 
+            white-space: nowrap;
+            margin-left: 2px;            /* 🆕 Margen constante para todas las filas */
         }
-        .label-fila { font-weight: bold; width: 28px; color: #555; font-size: 11px; text-align: center; margin-right: 4px; }
+        .label-fila { 
+            font-weight: bold; 
+            width: 34px !important;      /* 🆕 Aumentado de 28px a 34px para dar espacio cómodo a "M-F1" */
+            min-width: 34px !important;  /* 🆕 Bloquea el ancho mínimo en celulares */
+            max-width: 34px !important;  /* 🆕 Bloquea el ancho máximo para que nada se mueva */
+            color: var(--text-color) !important; 
+            opacity: 0.6;
+            font-size: 10px;             /* Un puntito más chico para que "M-F1" entre holgado */
+            text-align: center; 
+            margin-right: 4px; 
+            display: inline-block;       /* Fuerza a respetar el ancho en bloques de texto */
+        }
         .asiento-link {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 19px !important; height: 19px !important; border-radius: 3px;
+            display: inline-block; 
+            width: 19px !important; 
+            height: 14px !important; 
+            line-height: 14px !important; 
+            border-radius: 3px;
             font-weight: bold; font-size: 11px !important; color: white !important;
             text-decoration: none !important; border: none; text-align: center;
-            padding: 0 !important; margin: 0 !important; line-height: 19px !important;
+            padding: 0 !important; margin: 0 !important; 
             transition: transform 0.1s;
         }
         .asiento-link:active { transform: scale(0.9); }
         .asiento-vacio {
             display: inline-block;
-            width: 19px !important; height: 19px !important;
+            width: 19px !important; 
+            height: 14px !important; 
             padding: 0 !important; margin: 0 !important;
         }
         .seccion-titulo {
             font-weight: bold;
-            margin-top: 10px;
-            margin-bottom: 4px;
-            font-size: 12px;
+            margin-top: 10px;    
+            margin-bottom: 4px;   
+            font-size: 12px;      
             text-align: center;
-            color: var(--text-color) !important; /* 🆕 Se adapta automáticamente a blanco o negro según el tema */
-            opacity: 0.85; /* Le da un toque sutil para que no sea un color tan chillón */
+            color: var(--text-color) !important; /* 🆕 Cambia automáticamente a blanco o negro según el tema del celular */
+            opacity: 0.85; /* Le da un tono elegante para que no sea un color tan chillón */
         }
         .escenario {
             background-color: #34495E;
@@ -231,7 +263,7 @@ if df is not None and not df.empty:
         html_mapa += '</div>'
         
         if f == 7:
-            html_mapa += '<div class="seccion-titulo">ZONA PLATEA</div>'
+            html_mapa += '<div class="seccion-titulo">PLATEA</div>'
 
     # --- 2. TITULO: MEZZANINE ---
     df_mezz = df[df['Zona'] == 'MEZZANINE']
