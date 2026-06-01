@@ -68,6 +68,7 @@ def mostrar_formulario_modal(b):
         
     if guardar:
         with st.spinner("Guardando..."):
+            # 1. Definimos los datos nuevos para la butaca actual
             if nuevo_estado == "Disponible":
                 datos_nuevos = {
                     "Estado": "Disponible", "Datos Cliente": "", "Celular": "",
@@ -79,10 +80,31 @@ def mostrar_formulario_modal(b):
                     "Vendedor": vendedor, "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 
+            # 2. Actualizamos la butaca principal en Supabase (Tu lógica original)
             conn.table("butacas").update(datos_nuevos).eq("ID_Asiento", b['ID_Asiento']).execute()
+            
+            # 3. NUEVO: Insertamos el registro en la tabla de historial
+            datos_historial = {
+                "id_asiento": str(b.get('ID_Asiento')),
+                "zona": str(b.get('Zona')),
+                "fila": int(b.get('Fila', 0)),
+                "asiento": int(b.get('Asiento', 0)),
+                "estado_anterior": str(b.get('Estado', 'Disponible')),
+                "estado_nuevo": nuevo_estado,
+                "cliente": cliente,
+                "celular": celular,
+                "vendedor": vendedor  # Registra el nombre ingresado en el campo Vendedor
+            }
+            try:
+                conn.table("historial_butacas").insert(datos_historial).execute()
+            except Exception as e:
+                # Si falla el historial por alguna razón, que no interrumpa el flujo principal
+                pass
+
+            # 4. Refrescamos la base de datos local y cerramos modal
             cargar_datos_db(forzar=True)
-            st.success("¡Guardado correctamente!")
-            st.rerun()  # Cierra el modal y refresca el mapa al instante
+            st.success("¡Guardado e historial registrado correctamente!")
+            st.rerun()
 
 
 # --- 4. DETECTAR CLIC INMEDIATO DESDE EL MAPA ---
