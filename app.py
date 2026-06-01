@@ -16,14 +16,10 @@ except Exception as e:
     st.stop()
 
 # --- 2. INICIALIZAR ESTADOS DE SESIÓN ---
-if "pantalla" not in st.session_state:
-    st.session_state.pantalla = "mapa"
-if "asiento_seleccionado" not in st.session_state:
-    st.session_state.asiento_seleccionado = None
 if "datos_butacas" not in st.session_state:
     st.session_state.datos_butacas = None
 
-# --- 3. FUNCIÓN RÁPIDA DE CARGA (Solo viaja a internet cuando es necesario) ---
+# --- 3. FUNCIÓN RÁPIDA DE CARGA ---
 def cargar_datos_db(forzar=False):
     if st.session_state.datos_butacas is None or forzar:
         try:
@@ -39,117 +35,18 @@ def cargar_datos_db(forzar=False):
             st.error("Error al conectar con la base de datos.")
             st.stop()
 
-# Cargar datos al principio si la memoria está vacía (Evita re-descargas lentas)
+# Cargar datos iniciales
 cargar_datos_db()
 
-# --- 4. CONTROL DE NAVEGACIÓN INMEDIATA ---
-query_params = st.query_params
-if "sel_id" in query_params:
-    id_id = query_params["sel_id"]
-    st.query_params.clear()  # Limpiar la URL de inmediato
-    
-    df = st.session_state.datos_butacas
-    if df is not None and not df.empty:
-        asiento_local = df[df['ID_Asiento'] == id_id]
-        if not asiento_local.empty:
-            st.session_state.asiento_seleccionado = asiento_local.iloc[0].to_dict()
-            st.session_state.pantalla = "formulario"
-            st.rerun()
-
 
 # =========================================================================
-# PANTALLA 1: EL MAPA ULTRA COMPACTO
+# NUEVO: MODAL FLOTANTE DE EDICIÓN (Reemplaza la Pantalla 2 anterior)
 # =========================================================================
-if st.session_state.pantalla == "mapa":
-    st.markdown("<h3 style='margin-bottom: 0px;'>💺 Mapa de Asientos</h3>", unsafe_allow_html=True)
+@st.dialog("📝 Editar Información")
+def mostrar_formulario_modal(b):
+    st.markdown(f"📍 **{b.get('Zona')}** — Fila {b.get('Fila')}, Asiento {b.get('Asiento')}")
     
-    # Botón discreto para actualizar manualmente por si alguien más compró
-    col_tit, col_ref = st.columns([4, 1])
-    with col_tit:
-        st.caption("Toca un asiento de color para editar su información.")
-    with col_ref:
-        if st.button("🔄", help="Actualizar mapa"):
-            cargar_datos_db(forzar=True)
-            st.rerun()
-
-    df = st.session_state.datos_butacas
-
-    if df is not None and not df.empty:
-        # Estilos CSS optimizados para butacas más pequeñas y adaptativas
-        html_mapa = """
-        <style>
-            .mapa-contenedor { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
-            .fila-contenedor { display: flex; align-items: center; gap: 2px; overflow-x: auto; padding: 1px 0; }
-            .label-fila { font-weight: bold; width: 28px; color: #555; font-size: 11px; text-align: center; }
-            .asiento-link {
-                display: inline-flex; align-items: center; justify-content: center;
-                width: 19px !important; height: 19px !important; border-radius: 3px;
-                font-weight: bold; font-size: 11px !important; color: white !important;
-                text-decoration: none !important; border: none; text-align: center;
-                padding: 0 !important; margin: 0 !important; line-height: 19px !important;
-                transition: transform 0.1s;
-            }
-            .asiento-link:active { transform: scale(0.9); }
-            .col-disponible { background-color: #2ECC71 !important; } 
-            .col-ocupado { background-color: #E74C3C !important; }    
-            .col-reservado { background-color: #F1C40F !important; color: #333 !important; } 
-            .col-bloqueado { background-color: #7F8C8D !important; }   
-        </style>
-        <div class="mapa-contenedor">
-        """
-
-        zonas = ["VIP", "PLATEA", "MEZZANINE"]
-        for zona in zonas:
-            df_zona = df[df['Zona'] == zona]
-            if df_zona.empty:
-                continue
-                
-            html_mapa += f"<div style='font-weight:bold; margin-top:12px; margin-bottom:4px; font-size:13px; color: inherit; text-align: center;'>📌 Zona: {zona}</div>"
-            filas = sorted(df_zona['Fila'].unique())
-            
-            for f in filas:
-                html_mapa += f'<div class="fila-contenedor"><div class="label-fila">F{f}</div>'
-                df_fila = df_zona[df_zona['Fila'] == f].sort_values(by='Asiento')
-                
-                for _, butaca in df_fila.iterrows():
-                    id_asiento = butaca['ID_Asiento']
-                    num_asiento = int(butaca['Asiento'])
-                    estado = str(butaca['Estado']).strip()
-                    
-                    if estado == "Ocupado":
-                        clase_color = "col-ocupado"
-                    elif estado == "Reservado":
-                        clase_color = "col-reservado"
-                    elif estado == "Bloqueado":
-                        clase_color = "col-bloqueado"
-                    else:
-                        clase_color = "col-disponible"
-                    
-                    html_mapa += f'<a href="?sel_id={id_asiento}" target="_self" class="asiento-link {clase_color}">{num_asiento}</a>'
-                
-                html_mapa += '</div>'
-        
-        html_mapa += '</div><br>'
-        st.markdown(html_mapa, unsafe_allow_html=True)
-
-
-# =========================================================================
-# PANTALLA 2: EL FORMULARIO DE EDICIÓN (Carga instantánea)
-# =========================================================================
-elif st.session_state.pantalla == "formulario":
-    b = st.session_state.asiento_seleccionado
-    
-    st.markdown("📝 Editar Información")
-    st.markdown(f"📍 {b.get('Zona')} - Fila {b.get('Fila')}, Asiento {b.get('Asiento')}")
-    
-    if st.button("⬅️ Volver al Mapa", use_container_width=True):
-        st.session_state.pantalla = "mapa"
-        st.session_state.asiento_seleccionado = None
-        st.rerun()
-        
-    st.write("---")
-    
-    with st.form("form_edicion"):
+    with st.form("form_edicion_rapida"):
         opciones_estado = ["Disponible", "Ocupado", "Reservado", "Bloqueado"]
         estado_actual = b.get('Estado', 'Disponible')
         idx_estado = opciones_estado.index(estado_actual) if estado_actual in opciones_estado else 0
@@ -164,33 +61,181 @@ elif st.session_state.pantalla == "formulario":
         celular = st.text_input("Celular:", value=obtener_valor('Celular'))
         vendedor = st.text_input("Vendedor:", value=obtener_valor('Vendedor'))
         cargado_por = st.text_input("Registrado Por:", value=obtener_valor('CargadoPor'))
-               
+                
         st.write("<br>", unsafe_allow_html=True)
         guardar = st.form_submit_button("Guardar Cambios 💾", use_container_width=True)
         
     if guardar:
-        with st.spinner("Guardando en Supabase..."):
+        with st.spinner("Guardando..."):
             if nuevo_estado == "Disponible":
-                # Se eliminó "Imagen": ""
                 datos_nuevos = {
                     "Estado": "Disponible", "Datos Cliente": "", "Celular": "",
                     "Vendedor": "", "CargadoPor": "", "Fecha": ""
                 }
             else:
-                # Se eliminó "Imagen": imagen
                 datos_nuevos = {
                     "Estado": nuevo_estado, "Datos Cliente": cliente, "Celular": celular,
                     "Vendedor": vendedor, "CargadoPor": cargado_por,
                     "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 
-            # Guardamos en la base de datos real
             conn.table("butacas").update(datos_nuevos).eq("ID_Asiento", b['ID_Asiento']).execute()
-            
-            # ⚡ OPTIMIZACIÓN CRUCIAL: Forzamos la actualización de la memoria local inmediatamente
             cargar_datos_db(forzar=True)
-            
-            st.session_state.pantalla = "mapa"
-            st.session_state.asiento_seleccionado = None
             st.success("¡Guardado correctamente!")
-            st.rerun()
+            st.rerun()  # Cierra el modal y refresca el mapa al instante
+
+
+# --- 4. DETECTAR CLIC INMEDIATO DESDE EL MAPA ---
+query_params = st.query_params
+if "sel_id" in query_params:
+    id_id = query_params["sel_id"]
+    st.query_params.clear()  # Limpia la URL inmediatamente
+    
+    df = st.session_state.datos_butacas
+    if df is not None and not df.empty:
+        asiento_local = df[df['ID_Asiento'] == id_id]
+        if not asiento_local.empty:
+            # En lugar de cambiar de pantalla, disparamos el Modal Flotante directamente
+            mostrar_formulario_modal(asiento_local.iloc[0].to_dict())
+
+
+# =========================================================================
+# PANTALLA PRINCIPAL: MAPA
+# =========================================================================
+st.markdown("<h3 style='margin-bottom: 0px;'>💺 Mapa de Asientos</h3>", unsafe_allow_html=True)
+
+col_tit, col_ref = st.columns([4, 1])
+with col_tit:
+    st.caption("Toca un asiento de color para editar su información.")
+with col_ref:
+    if st.button("🔄", help="Actualizar mapa"):
+        cargar_datos_db(forzar=True)
+        st.rerun()
+
+df = st.session_state.datos_butacas
+
+if df is not None and not df.empty:
+    html_mapa = """
+    <style>
+        .mapa-contenedor { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+        .fila-contenedor { display: flex; align-items: center; justify-content: center; gap: 2px; padding: 1px 0; }
+        .label-fila { font-weight: bold; width: 28px; color: #555; font-size: 11px; text-align: center; margin-right: 4px; }
+        .asiento-link {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 19px !important; height: 19px !important; border-radius: 3px;
+            font-weight: bold; font-size: 11px !important; color: white !important;
+            text-decoration: none !important; border: none; text-align: center;
+            padding: 0 !important; margin: 0 !important; line-height: 19px !important;
+            transition: transform 0.1s;
+        }
+        .asiento-link:active { transform: scale(0.9); }
+        .asiento-vacio {
+            display: inline-block;
+            width: 19px !important; height: 19px !important;
+            padding: 0 !important; margin: 0 !important;
+        }
+        .seccion-titulo {
+            font-weight: bold;
+            margin-top: 22px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            text-align: center;
+            color: #2C3E50;
+        }
+        .escenario {
+            background-color: #34495E;
+            color: white;
+            text-align: center;
+            padding: 6px;
+            font-weight: bold;
+            font-size: 13px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+        .col-disponible { background-color: #2ECC71 !important; } 
+        .col-ocupado { background-color: #E74C3C !important; }    
+        .col-reservado { background-color: #F1C40F !important; color: #333 !important; } 
+        .col-bloqueado { background-color: #7F8C8D !important; }   
+    </style>
+    <div class="mapa-contenedor">
+        <div class="escenario">🎬 ESCENARIO</div>
+    """
+
+    # --- 1. TITULO: VIP ---
+    html_mapa += '<div class="seccion-titulo">📌 ZONA VIP</div>'
+    
+    estructura_inferior = {
+        1: {"v_izq": 4, "asientos": (19, 1), "v_der": 2},
+        2: {"v_izq": 3, "asientos": (21, 1), "v_der": 1},
+        3: {"v_izq": 2, "asientos": (22, 1), "v_der": 1},
+        **{r: {"v_izq": 1, "asientos": (23, 1), "v_der": 1} for r in range(4, 15)}
+    }
+
+    for f in range(1, 15):
+        df_fila = df[(df['Fila'] == f) & (df['Zona'].isin(['VIP', 'PLATEA']))]
+        config = estructura_inferior.get(f, {"v_izq": 0, "asientos": (0, 0), "v_der": 0})
+        
+        html_mapa += f'<div class="fila-contenedor"><div class="label-fila">F{f}</div>'
+        
+        for _ in range(config["v_izq"]):
+            html_mapa += '<div class="asiento-vacio"></div>'
+            
+        inicio, fin = config["asientos"]
+        if inicio > 0:
+            for num in range(inicio, fin - 1, -1):
+                butaca = df_fila[df_fila['Asiento'] == num]
+                if not butaca.empty:
+                    b_data = butaca.iloc[0]
+                    estado = str(b_data['Estado']).strip()
+                    id_asiento = b_data['ID_Asiento']
+                    clase_color = "col-ocupado" if estado == "Ocupado" else "col-reservado" if estado == "Reservado" else "col-bloqueado" if estado == "Bloqueado" else "col-disponible"
+                    html_mapa += f'<a href="?sel_id={id_asiento}" target="_self" class="asiento-link {clase_color}">{num}</a>'
+                else:
+                    html_mapa += '<div class="asiento-vacio"></div>'
+        
+        for _ in range(config["v_der"]):
+            html_mapa += '<div class="asiento-vacio"></div>'
+            
+        html_mapa += '</div>'
+        
+        if f == 7:
+            html_mapa += '<div class="seccion-titulo">📌 ZONA PLATEA</div>'
+
+    # --- 2. TITULO: MEZZANINE ---
+    df_mezz = df[df['Zona'] == 'MEZZANINE']
+    if not df_mezz.empty:
+        html_mapa += '<div class="seccion-titulo">📌 MEZZANINE</div>'
+        
+        estructura_mezz = {
+            4: [("v", 0), ("a", (12, 7)), ("v", 13), ("a", (6, 1)), ("v", 0)],
+            3: [("v", 0), ("a", (23, 18)), ("v", 1), ("a", (17, 7)), ("v", 1), ("a", (6, 1)), ("v", 0)],
+            2: [("v", 1), ("a", (20, 16)), ("v", 2), ("a", (15, 6)), ("v", 1), ("a", (5, 1)), ("v", 1)],
+            1: [("v", 1), ("a", (21, 17)), ("v", 1), ("a", (16, 6)), ("v", 1), ("a", (5, 1)), ("v", 1)]
+        }
+        
+        for f in [1, 2, 3, 4]:
+            html_mapa += f'<div class="fila-contenedor"><div class="label-fila">M-F{f}</div>'
+            df_fila = df_mezz[df_mezz['Fila'] == f]
+            
+            bloques = estructura_mezz.get(f, [])
+            for tipo, info in bloques:
+                if tipo == "v":
+                    for _ in range(info):
+                        html_mapa += '<div class="asiento-vacio"></div>'
+                elif tipo == "a":
+                    inicio, fin = info
+                    for num in range(inicio, fin - 1, -1):
+                        butaca = df_fila[df_fila['Asiento'] == num]
+                        if not butaca.empty:
+                            b_data = butaca.iloc[0]
+                            estado = str(b_data['Estado']).strip()
+                            id_asiento = b_data['ID_Asiento']
+                            clase_color = "col-ocupado" if estado == "Ocupado" else "col-reservado" if estado == "Reservado" else "col-bloqueado" if estado == "Bloqueado" else "col-disponible"
+                            html_mapa += f'<a href="?sel_id={id_asiento}" target="_self" class="asiento-link {clase_color}">{num}</a>'
+                        else:
+                            html_mapa += '<div class="asiento-vacio"></div>'
+            html_mapa += '</div>'
+
+    html_mapa += '</div><br>'
+    st.markdown(html_mapa, unsafe_allow_html=True)
