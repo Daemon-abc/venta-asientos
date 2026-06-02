@@ -38,7 +38,6 @@ def cargar_datos_db(forzar=False):
 # Cargar datos iniciales
 cargar_datos_db()
 
-
 # =========================================================================
 # NUEVO: MODAL FLOTANTE DE EDICIÓN (Reemplaza la Pantalla 2 anterior)
 # =========================================================================
@@ -51,7 +50,8 @@ def mostrar_formulario_modal(b):
         estado_actual = b.get('Estado', 'Disponible')
         idx_estado = opciones_estado.index(estado_actual) if estado_actual in opciones_estado else 0
         
-        nuevo_estado = st.selectbox("Estado del asiento:", options=opciones_estado, index=idx_estado)
+        # CAMBIO: Solo se reemplazó el selectbox por las píldoras nativas (Botones)
+        nuevo_estado = st.pills("Estado del asiento:", options=opciones_estado, default=opciones_estado[idx_estado])
         
         def obtener_valor(campo):
             v = str(b.get(campo, ''))
