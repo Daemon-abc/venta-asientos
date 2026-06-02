@@ -127,7 +127,7 @@ if "sel_id" in query_params:
 # Usamos un contenedor HTML flexible que agrupa el título a la izquierda y el botón de refrescar nativo de Streamlit
 st.markdown("""
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-        <h3 style="margin: 0; padding: 0;">💺 Mapa de Asientos</h3>
+        <h3 style="margin: 0; padding: 0;">JARDÍN DE MELODIAS</h3>
         <a href="?refresh=true" target="_self" style="
             text-decoration: none; 
             background-color: var(--secondary-background-color, #f0f2f6); 
