@@ -10,7 +10,7 @@ def generar_imagen_comprobante(b):
     try:
         img = Image.open("Boleto9.png").convert('RGB') 
     except FileNotFoundError:
-        img = Image.new('RGB', (800, 1000), color=(255, 255, 255))
+        img = Image.new('RGB', (400, 500), color=(255, 255, 255))
     
     d = ImageDraw.Draw(img)
     
@@ -113,7 +113,7 @@ def mostrar_formulario_modal(b):
     st.write("<br>", unsafe_allow_html=True)
     
     # Botón normal de Streamlit
-    guardar = st.button("Guardar Cambios", use_container_width=True)
+    guardar = st.button("Guardar", use_container_width=True)
         
     if guardar:
         with st.spinner("Guardando..."):
@@ -166,7 +166,7 @@ def mostrar_formulario_modal(b):
         st.download_button(
             label="Descargar Boleto",
             data=img_bytes,
-            file_name=f"Boleto_{b.get('Fila')}_{b.get('Asiento')}.png",
+            file_name=f"Boleto_{b.get('Zona')}_{b.get('Fila')}_{b.get('Asiento')}.png",
             mime="image/png",
             use_container_width=True,
             key=f"dl_{b['ID_Asiento']}" # Clave única para evitar errores de duplicados
