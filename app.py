@@ -7,20 +7,30 @@ import io
 
 # --- FORZAR PERMISO DE ZOOM EN CELULARES ---
 # --- FORZAR PERMISO DE ZOOM EN CELULARES (COMPATIBLE CON STREAMLIT CLOUD) ---
+# --- FORZAR PERMISO DE ZOOM EN CELULARES (COMPATIBLE CON STREAMLIT CLOUD) ---
 st.markdown(
     """
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <script>
-        // Truco maestro: Buscar el viewport del contenedor principal de Streamlit y forzar el zoom
-        const modificarViewport = () => {
-            const viewports = window.parent.document.querySelectorAll('meta[name="viewport"]');
-            viewports.forEach(vp => {
+        // Función para romper el bloqueo de zoom de Streamlit en el navegador del celular
+        const habilitarZoomMovi = () => {
+            // Modifica el viewport de la app activa
+            const viewportsActuales = document.querySelectorAll('meta[name="viewport"]');
+            viewportsActuales.forEach(vp => {
                 vp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
             });
+            
+            // Modifica el viewport del contenedor padre de Streamlit Cloud
+            if (window.parent && window.parent.document) {
+                const viewportsPadre = window.parent.document.querySelectorAll('meta[name="viewport"]');
+                viewportsPadre.forEach(vp => {
+                    vp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+                });
+            }
         };
-        // Ejecutar inmediatamente y re-intentar en 1 segundo por si Streamlit tarda en cargar
-        modificarViewport();
-        setTimeout(modificarViewport, 1000);
+
+        // Se ejecuta al cargar y se repite continuamente por si Streamlit refresca la página
+        habilitarZoomMovi();
+        setInterval(habilitarZoomMovi, 1500);
     </script>
     """, 
     unsafe_allow_html=True
