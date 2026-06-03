@@ -1,16 +1,21 @@
 import streamlit as st
 from st_supabase_connection import SupabaseConnection
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from PIL import Image, ImageDraw, ImageFont
 import io
-from datetime import datetime, timedelta
+
+# --- FORZAR PERMISO DE ZOOM EN CELULARES ---
+st.markdown(
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">', 
+    unsafe_allow_html=True
+)
 
 def generar_imagen_comprobante(b):
     try:
-        img = Image.open("ticked-09.png").convert('RGB') 
+        img = Image.open("ticked-02.png").convert('RGB') 
     except FileNotFoundError:
-        img = Image.new('RGB', (800, 800), color=(255, 255, 255))
+        img = Image.new('RGB', (640, 800), color=(255, 255, 255))
     
     d = ImageDraw.Draw(img)
     
@@ -27,24 +32,20 @@ def generar_imagen_comprobante(b):
 
     if fecha_guardada and str(fecha_guardada).lower() not in ['nan', 'none', 'null', '']:
         try:
-            # Supabase suele guardar la fecha como 'YYYY-MM-DD HH:MM:SS'
-            # Lo convertimos a un objeto datetime para darle un formato más bonito
             dt = datetime.strptime(str(fecha_guardada).split(".")[0], "%Y-%m-%d %H:%M:%S")
             fecha_mostrar = dt.strftime('%d/%m/%Y %H:%M')
         except ValueError:
-            # Si por alguna razón el formato de la cadena varía, mostramos el texto tal cual viene
             fecha_mostrar = str(fecha_guardada)
     else:
         fecha_mostrar = "No registrada"
 
-  # --- DIBUJAR LOS TEXTOS CENTRADOS ---
-
-    d.text((400, 470), f"ASIENTO: {b.get('Asiento')}", fill=(255, 255, 255), font=fuente_titulo, anchor="mm")
-    d.text((400, 530), f"FILA: {b.get('Fila')}", fill=(255, 255, 255), font=fuente_titulo, anchor="mm")
-    d.text((400, 590), f"ZONA: {b.get('Zona')}", fill=(255, 255, 255), font=fuente_titulo, anchor="mm")
-    d.text((400, 650), f"CLIENTE: {b.get('Datos Cliente')}", fill=(255, 255, 255), font=fuente_texto, anchor="mm")
-    d.text((400, 675), f"VENDEDOR: {b.get('Vendedor')}", fill=(255, 255, 255), font=fuente_texto, anchor="mm")
-    d.text((400, 700), f"FECHA VENTA: {fecha_mostrar}", fill=(255, 255, 255), font=fuente_texto, anchor="mm")
+    # --- DIBUJAR LOS TEXTOS CENTRADOS ---
+    d.text((320, 470), f"ASIENTO: {b.get('Asiento')}", fill=(255, 255, 255), font=fuente_titulo, anchor="mm")
+    d.text((320, 530), f"FILA: {b.get('Fila')}", fill=(255, 255, 255), font=fuente_titulo, anchor="mm")
+    d.text((320, 590), f"ZONA: {b.get('Zona')}", fill=(255, 255, 255), font=fuente_titulo, anchor="mm")
+    d.text((320, 650), f"CLIENTE: {b.get('Datos Cliente')}", fill=(255, 255, 255), font=fuente_texto, anchor="mm")
+    d.text((320, 675), f"VENDEDOR: {b.get('Vendedor')}", fill=(255, 255, 255), font=fuente_texto, anchor="mm")
+    d.text((320, 700), f"FECHA VENTA: {fecha_mostrar}", fill=(255, 255, 255), font=fuente_texto, anchor="mm")
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     return buf.getvalue()
@@ -84,35 +85,29 @@ def cargar_datos_db(forzar=False):
 # Cargar datos iniciales
 cargar_datos_db()
 
-@st.dialog("📝 Editar Información")
+@st.dialog("EDITAR INFORMACIÓN")
 def mostrar_formulario_modal(b):
-    st.markdown(f"📍 **{b.get('Zona')}** — Fila {b.get('Fila')}, Asiento {b.get('Asiento')}")
+    st.markdown(f"**{b.get('Zona')}** — **Fila {b.get('Fila')}** — **Asiento {b.get('Asiento')}**")
     
-    # Mensaje de éxito persistente tras guardar
     if st.session_state.get("guardado_reciente_id") == b['ID_Asiento']:
         st.success("¡Guardado correctamente!")
         st.session_state["guardado_reciente_id"] = None
 
-    # Opciones de Estado usando st.pills
     opciones_estado = ["Disponible", "Ocupado", "Reservado", "Bloqueado"]
     estado_actual = b.get('Estado', 'Disponible')
     idx_estado = opciones_estado.index(estado_actual) if estado_actual in opciones_estado else 0
     
-    # Agregamos una clave única (key) para evitar conflictos en re-ejecuciones
     nuevo_estado = st.pills("Estado del asiento:", options=opciones_estado, default=opciones_estado[idx_estado], key=f"pill_{b['ID_Asiento']}")
     
     def obtener_valor(campo):
         v = str(b.get(campo, ''))
         return "" if v.lower() in ['nan', 'none', 'null', ''] else v
 
-    # Inputs de texto normales con claves únicas asociadas al ID del asiento
     cliente = st.text_input("Nombre del Cliente:", value=obtener_valor('Datos Cliente'), key=f"cli_{b['ID_Asiento']}")
     celular = st.text_input("Celular:", value=obtener_valor('Celular'), key=f"cel_{b['ID_Asiento']}")
     vendedor = st.text_input("Vendedor:", value=obtener_valor('Vendedor'), key=f"ven_{b['ID_Asiento']}")
     
     st.write("<br>", unsafe_allow_html=True)
-    
-    # Botón normal de Streamlit
     guardar = st.button("Guardar", use_container_width=True)
         
     if guardar:
@@ -123,15 +118,15 @@ def mostrar_formulario_modal(b):
                     "Vendedor": "", "Fecha": ""
                 }
             else:
+                # Zona horaria fija UTC-4 de forma limpia y moderna
+                hora_local = datetime.now(timezone(timedelta(hours=-4)))
                 datos_nuevos = {
                     "Estado": nuevo_estado, "Datos Cliente": cliente, "Celular": celular,
-                    "Vendedor": vendedor, "Fecha": (datetime.utcnow() - timedelta(hours=4)).strftime("%Y-%m-%d %H:%M:%S")
+                    "Vendedor": vendedor, "Fecha": hora_local.strftime("%Y-%m-%d %H:%M:%S")
                 }
                 
-            # Guardar en Supabase
             conn.table("butacas").update(datos_nuevos).eq("ID_Asiento", b['ID_Asiento']).execute()
             
-            # Guardar Historial
             datos_historial = {
                 "id_asiento": str(b.get('ID_Asiento')),
                 "zona": str(b.get('Zona')),
@@ -148,19 +143,12 @@ def mostrar_formulario_modal(b):
             except Exception:
                 pass
 
-            # Refrescamos la BD local inmediatamente
             cargar_datos_db(forzar=True)
-            
-            # Guardamos la bandera para el mensaje de éxito
             st.session_state["guardado_reciente_id"] = b['ID_Asiento']
-            
-            # Limpiamos los query params para asegurarnos de que el mapa de fondo no intente duplicar llamadas
             st.query_params.clear()
-            # Forzamos la reapertura limpia del formulario pasándole los nuevos datos directamente
             st.query_params["sel_id"] = b['ID_Asiento']
             st.rerun()
 
-    # --- BOTÓN DE DESCARGA DINÁMICO ---
     if estado_actual in ["Ocupado", "Reservado"]:
         img_bytes = generar_imagen_comprobante(b)
         st.download_button(
@@ -169,14 +157,14 @@ def mostrar_formulario_modal(b):
             file_name=f"Boleto_{b.get('Zona')}_{b.get('Fila')}_{b.get('Asiento')}.png",
             mime="image/png",
             use_container_width=True,
-            key=f"dl_{b['ID_Asiento']}" # Clave única para evitar errores de duplicados
+            key=f"dl_{b['ID_Asiento']}"
         )
 
-# --- 4. DETECTAR CLIC INMEDIATO DESDE EL MAPA O REFRESCADO DE FORMULARIO ---
+# --- 4. DETECTAR CLIC INMEDIATO DESDE EL MAPA ---
 query_params = st.query_params
 if "sel_id" in query_params:
     id_id = query_params["sel_id"]
-    st.query_params.clear()  # Limpia la URL inmediatamente
+    st.query_params.clear()
     
     df = st.session_state.datos_butacas
     if df is not None and not df.empty:
@@ -184,109 +172,260 @@ if "sel_id" in query_params:
         if not asiento_local.empty:
             mostrar_formulario_modal(asiento_local.iloc[0].to_dict())
 
-
 ## =========================================================================
 # PANTALLA PRINCIPAL: MAPA
 ## =========================================================================
-
-st.markdown("""
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-        <h3 style="margin: 0; padding: 0;">JARDÍN DE MELODIAS</h3>
-        <a href="?refresh=true" target="_self" style="
-            text-decoration: none; 
-            background-color: var(--secondary-background-color, #f0f2f6); 
-            color: var(--text-color, #31333F); 
-            padding: 4px 10px; 
-            border-radius: 4px; 
-            font-size: 14px; 
-            font-weight: bold;
-            border: 1px solid rgba(49, 51, 63, 0.2);
-        ">🔄</a>
-    </div>
-""", unsafe_allow_html=True)
-
-if st.query_params.get("refresh") == "true":
-    st.query_params.clear()
-    cargar_datos_db(forzar=True)
-    st.rerun()
-
 df = st.session_state.datos_butacas
 
 if df is not None and not df.empty:
-    html_mapa = """
-    <style>
-        .mapa-contenedor { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
-        .fila-contenedor { 
-            display: flex; 
-            align-items: center; 
-            justify-content: flex-start; 
-            gap: 1px; 
-            padding: 1px 0; 
-            width: 100%;
-            overflow: hidden; 
-            white-space: nowrap;
-            margin-left: 2px; 
-        }
-        .label-fila { 
-            font-weight: bold; 
-            width: 34px !important; 
-            min-width: 34px !important; 
-            max-width: 34px !important; 
-            color: var(--text-color) !important; 
-            opacity: 0.6;
-            font-size: 10px; 
-            text-align: center; 
-            margin-right: 4px; 
-            display: inline-block; 
-        }
-        .asiento-link {
-            display: inline-block; 
-            width: 19px !important; 
-            height: 14px !important; 
-            line-height: 14px !important; 
-            border-radius: 3px;
-            font-weight: bold; font-size: 11px !important; color: white !important;
-            text-decoration: none !important; border: none; text-align: center;
-            padding: 0 !important; margin: 0 !important; 
-            transition: transform 0.1s;
-        }
-        .asiento-link:active { transform: scale(0.9); }
-        .asiento-vacio {
-            display: inline-block;
-            width: 19px !important; 
-            height: 14px !important; 
-            padding: 0 !important; margin: 0 !important;
-        }
-        .seccion-titulo {
-            font-weight: bold;
-            margin-top: 10px;    
-            margin-bottom: 4px;   
-            font-size: 12px;      
-            text-align: center;
-            color: var(--text-color) !important; 
-            opacity: 0.85; 
-        }
-        .escenario {
-            background-color: #34495E;
-            color: white;
-            text-align: center;
-            padding: 6px;
-            font-weight: bold;
-            font-size: 13px;
-            border-radius: 4px;
-            margin-bottom: 6px; 
-            letter-spacing: 2px;
-        }
-        .col-disponible { background-color: #2ECC71 !important; } 
-        .col-ocupado { background-color: #E74C3C !important; }    
-        .col-reservado { background-color: #F1C40F !important; color: #333 !important; } 
-        .col-bloqueado { background-color: #7F8C8D !important; }   
-    </style>
-    <div class="mapa-contenedor">
-        <div class="escenario">ESCENARIO</div>
-    """
+    css_estilos = """<style>
+    /* Ocultamos por completo la cadenita de Streamlit de los h3 */
+    .titulo-principal h3 a, 
+    .titulo-principal a, 
+    h3 a.header-anchor {
+        opacity: 0 !important;
+        position: absolute !important;
+        left: -9999px !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
 
-    html_mapa += '<div class="seccion-titulo">VIP</div>'
+    .titulo-principal {
+        width: 100% !important;
+        text-align: center !important;
+        margin-top: 10px !important;
+        margin-bottom: 15px !important;
+        display: block !important;
+    }
+
+    /* Corrección del bloque h3 para que se centre perfectamente */
+    .titulo-principal h3 {
+        margin: 0 auto !important;
+        padding: 0 !important;
+        text-align: center !important;
+        font-weight: bold !important;
+        display: block !important; 
+    }
+
+    .contenedor-maestro-mapa {
+        width: 100%; 
+        max-width: 100%; 
+        display: block; 
+        box-sizing: border-box;
+        position: relative !important;
+    }
+
+    .pantalla-layout { 
+        display: flex !important; 
+        flex-direction: row !important; 
+        align-items: stretch !important; 
+        justify-content: center !important;
+        width: 100% !important; 
+        max-width: 100% !important;
+        margin-top: 10px; 
+        box-sizing: border-box !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+    
+    .mapa-seccion { 
+        flex-grow: 1 !important;
+        flex-shrink: 1 !important;
+        display: block !important; 
+        max-width: calc(100% - 50px) !important;
+        overflow-x: auto !important;
+    }
+    
+    .mapa-contenedor { 
+        display: flex !important; 
+        flex-direction: column !important; 
+        gap: 2px !important; 
+        align-items: center !important;
+    }
+    
+    .fila-contenedor { 
+        display: flex !important; 
+        flex-direction: row !important; 
+        align-items: center !important; 
+        justify-content: center !important;
+        gap: 0.15vw !important; 
+        padding: 0px 0 !important; 
+        width: 100% !important; 
+        max-width: 460px !important;
+        white-space: nowrap !important; 
+    }
+    
+    .label-fila { 
+        font-weight: bold !important; 
+        width: 7vw !important; 
+        min-width: 20px !important;
+        max-width: 40px !important;
+        color: var(--text-color) !important; 
+        opacity: 0.6 !important; 
+        font-size: 1.8vw !important; 
+        text-align: center !important; 
+        margin-right: 0.2vw !important; 
+        display: inline-block !important; 
+    }
+    
+    .label-fila-derecha { 
+        font-weight: bold !important; 
+        width: 7vw !important; 
+        min-width: 20px !important;
+        max-width: 40px !important;
+        color: var(--text-color) !important; 
+        opacity: 0.6 !important; 
+        font-size: 1.8vw !important; 
+        text-align: center !important; 
+        margin-left: 0.2vw !important; 
+        display: inline-block !important; 
+    }
+    
+    .zonas-lateral { 
+        display: flex !important; 
+        flex-direction: column !important; 
+        justify-content: space-between !important; 
+        align-items: center !important; 
+        width: 20px !important;
+        min-width: 15px !important; 
+        max-width: 25px !important;
+        height: auto !important;
+        align-self: stretch !important; 
+        flex-shrink: 0 !important;
+    }
+
+    .asiento-link { 
+        display: inline-block !important; 
+        width: 3.2vw !important; 
+        max-width: 16px !important;
+        height: 3vw !important; 
+        max-height: 16px !important;
+        line-height: 3.2vw !important; 
+        border-radius: 2px !important; 
+        font-weight: bold !important; 
+        font-size: 1.5vw !important; 
+        color: white !important; 
+        text-decoration: none !important; 
+        border: none !important; 
+        text-align: center !important; 
+        padding: 0 !important; 
+        margin: 0 !important; 
+        transition: transform 0.1s !important; 
+    }
+    .asiento-link:active { transform: scale(0.9) !important; }
+    
+    .asiento-vacio { 
+        display: inline-block !important; 
+        width: 3.2vw !important; 
+        max-width: 16px !important;
+        height: 3.2vw !important;
+        max-height: 16px !important;
+        padding: 0 !important; 
+        margin: 0 !important; 
+    }
+    
+    .separador-vip-platea { 
+        height: 1px !important; 
+        display: block !important; 
+    }
+
+    .separador-vip-platea::after {
+        content: "" !important;
+        position: absolute !important;
+        left: 0 !important;
+        margin-top: 0px !important; 
+        width: 100% !important; 
+        border-top: 1px solid #555555 !important; 
+        z-index: 99 !important;
+    }
+    
+    .separador-platea-mezzanine { 
+        height: 12px !important; 
+        display: block !important; 
+    }
+
+    .separador-platea-mezzanine::after {
+        content: "" !important;
+        position: absolute !important;
+        left: 0 !important;
+        margin-top: 6px !important; 
+        width: 100% !important; 
+        border-top: 0.5px solid #555555 !important; 
+        z-index: 99 !important;
+    }
+    
+    /* ESCENARIO TOTALMENTE CENTRADO */
+    .escenario { 
+        background-color: #34495E !important; 
+        color: white !important; 
+        display: flex !important;
+        justify-content: center !important; 
+        align-items: center !important;  
+        text-align: center !important; 
+        padding: 0 !important; 
+        font-weight: bold !important; 
+        font-size: 2.2vw !important; 
+        border-radius: 4px !important; 
+        margin-bottom: 8px !important; 
+        letter-spacing: 2px !important; 
+        width: 100% !important; 
+        height: 40px !important; 
+    }
+    
+    .texto-vertical { 
+        writing-mode: vertical-rl !important; 
+        text-combine-upright: none !important; 
+        letter-spacing: 2px !important; 
+        font-weight: bold !important; 
+        font-size: 1.5vw !important; 
+        text-align: center !important; 
+        color: var(--text-color) !important; 
+        opacity: 0.85 !important; 
+        display: flex !important; 
+        align-items: center !important; 
+        justify-content: center !important; 
+        width: 100% !important; 
+        text-transform: uppercase !important; 
+    }
+    
+    .col-disponible { background-color: #2ECC71 !important; } 
+    .col-ocupado { background-color: #E74C3C !important; }    
+    .col-reservado { background-color: #F1C40F !important; color: #333 !important; } 
+    .col-bloqueado { background-color: #7F8C8D !important; }
+
+    @media (min-width: 768px) {
+        .label-fila { font-size: 11px !important; }
+        .label-fila-derecha { font-size: 11px !important; }
+        .asiento-link { font-size: 10px !important; line-height: 14px !important; }
+        .texto-vertical { font-size: 12px !important; }
+        .escenario { font-size: 13px !important; }
+    }
+    
+    @media (max-width: 767px) {
+        .label-fila { font-size: 8px !important; }
+        .label-fila-derecha { font-size: 8px !important; }
+        .texto-vertical { font-size: 8px !important; letter-spacing: 1px !important; }
+        .asiento-link { font-size: 8px !important; }
+    }
+    </style>"""
+
+    # --- CONSTRUCCIÓN DEL HTML ---
+    html_mapa = css_estilos 
+    # Se eliminaron los espacios en blanco innecesarios aquí:
+    html_mapa += '<div class="titulo-principal"><h3>JARDÍN DE MELODIAS</h3></div>'
+    html_mapa += '<div class="contenedor-maestro-mapa">'
+    html_mapa += '<div class="escenario">ESCENARIO</div>'
+    
+    # --- PANTALLA LAYOUT PRINCIPAL ---
+    html_mapa += '<div class="pantalla-layout">'
+    
+    html_mapa += '<div class="zonas-lateral" style="margin-right: 6px !important;">'
+    html_mapa += '<div class="texto-vertical" style="flex-grow: 7; flex-basis: 0;">VIP</div>'
+    html_mapa += '<div class="texto-vertical" style="flex-grow: 7; flex-basis: 0;">PLATEA</div>'
+    html_mapa += '<div class="texto-vertical" style="flex-grow: 4; flex-basis: 0; margin-top: 6px;">MEZZANINE</div>'
+    html_mapa += '</div>'
+    
+    html_mapa += '<div class="mapa-seccion"><div class="mapa-contenedor">'
     
     estructura_inferior = {
         1: {"v_izq": 4, "asientos": (19, 1), "v_der": 2},
@@ -320,15 +459,16 @@ if df is not None and not df.empty:
         for _ in range(config["v_der"]):
             html_mapa += '<div class="asiento-vacio"></div>'
             
-        html_mapa += '</div>'
+        html_mapa += f'<div class="label-fila-derecha">F{f}</div></div>'
         
         if f == 7:
-            html_mapa += '<div class="seccion-titulo">PLATEA</div>'
+            html_mapa += '<div class="separador-vip-platea"></div>'
+            
+        if f == 14:
+            html_mapa += '<div class="separador-platea-mezzanine"></div>'
 
     df_mezz = df[df['Zona'] == 'MEZZANINE']
     if not df_mezz.empty:
-        html_mapa += '<div class="seccion-titulo">MEZZANINE</div>'
-        
         estructura_mezz = {
             4: [("v", 0), ("a", (12, 7)), ("v", 13), ("a", (6, 1)), ("v", 0)],
             3: [("v", 0), ("a", (23, 18)), ("v", 1), ("a", (17, 7)), ("v", 1), ("a", (6, 1)), ("v", 0)],
@@ -357,7 +497,17 @@ if df is not None and not df.empty:
                             html_mapa += f'<a href="?sel_id={id_asiento}" target="_self" class="asiento-link {clase_color}">{num}</a>'
                         else:
                             html_mapa += '<div class="asiento-vacio"></div>'
-            html_mapa += '</div>'
+                            
+            html_mapa += f'<div class="label-fila-derecha">M-F{f}</div></div>'
 
-    html_mapa += '</div><br>'
+    html_mapa += '</div></div>'
+    
+    html_mapa += '<div class="zonas-lateral" style="margin-left: 6px !important; margin-right: 0px !important;">'
+    html_mapa += '<div class="texto-vertical" style="flex-grow: 7; flex-basis: 0;">VIP</div>'
+    html_mapa += '<div class="texto-vertical" style="flex-grow: 7; flex-basis: 0;">PLATEA</div>'
+    html_mapa += '<div class="texto-vertical" style="flex-grow: 4; flex-basis: 0; margin-top: 6px;">MEZZANINE</div>'
+    html_mapa += '</div>' 
+    
+    html_mapa += '</div></div><br>'
+    
     st.markdown(html_mapa, unsafe_allow_html=True)
