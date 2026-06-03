@@ -6,8 +6,23 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 
 # --- FORZAR PERMISO DE ZOOM EN CELULARES ---
+# --- FORZAR PERMISO DE ZOOM EN CELULARES (COMPATIBLE CON STREAMLIT CLOUD) ---
 st.markdown(
-    '<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">', 
+    """
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <script>
+        // Truco maestro: Buscar el viewport del contenedor principal de Streamlit y forzar el zoom
+        const modificarViewport = () => {
+            const viewports = window.parent.document.querySelectorAll('meta[name="viewport"]');
+            viewports.forEach(vp => {
+                vp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+            });
+        };
+        // Ejecutar inmediatamente y re-intentar en 1 segundo por si Streamlit tarda en cargar
+        modificarViewport();
+        setTimeout(modificarViewport, 1000);
+    </script>
+    """, 
     unsafe_allow_html=True
 )
 
