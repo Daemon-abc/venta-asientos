@@ -41,9 +41,9 @@ def generar_imagen_comprobante(b):
     d.text((130, 625), f"ASIENTO: {b.get('Asiento')}", fill=(255, 255, 255), font=fuente_texto)
     d.text((130, 670), f"FILA: {b.get('Fila')}", fill=(255, 255, 255), font=fuente_texto)
     d.text((130, 715), f"ZONA: {b.get('Zona')}", fill=(255, 255, 255), font=fuente_texto)
-    d.text((130, 750), f"CLIENTE: {b.get('Datos Cliente')}", fill=(255, 255, 255), font=fuente_texto)
-    d.text((130, 795), f"VENDEDOR: {b.get('Vendedor')}", fill=(255, 255, 255), font=fuente_texto)
-    d.text((130, 840), f"FECHA VENTA: {fecha_mostrar}", fill=(255, 255, 255), font=fuente_texto)
+    d.text((130, 760), f"CLIENTE: {b.get('Datos Cliente')}", fill=(255, 255, 255), font=fuente_texto)
+    d.text((130, 805), f"VENDEDOR: {b.get('Vendedor')}", fill=(255, 255, 255), font=fuente_texto)
+    d.text((130, 850), f"FECHA VENTA: {fecha_mostrar}", fill=(255, 255, 255), font=fuente_texto)
     
     buf = io.BytesIO()
     img.save(buf, format='PNG')
