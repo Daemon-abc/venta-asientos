@@ -8,15 +8,15 @@ from datetime import datetime, timedelta
 
 def generar_imagen_comprobante(b):
     try:
-        img = Image.open("plantilla_boleto.png").convert('RGB') 
+        img = Image.open("Boleto9.png").convert('RGB') 
     except FileNotFoundError:
-        img = Image.new('RGB', (400, 250), color=(255, 255, 255))
+        img = Image.new('RGB', (400, 500), color=(255, 255, 255))
     
     d = ImageDraw.Draw(img)
     
     try:
         fuente_titulo = ImageFont.truetype("Ticketing.ttf", 20)
-        fuente_texto = ImageFont.truetype("Ticketing.ttf", 20)
+        fuente_texto = ImageFont.truetype("Ticketing.ttf", 35)
     except IOError:
         fuente_titulo = ImageFont.load_default()
         fuente_texto = ImageFont.load_default()
@@ -38,13 +38,12 @@ def generar_imagen_comprobante(b):
         fecha_mostrar = "No registrada"
 
     # --- DIBUJAR LOS TEXTOS ---
-    d.text((30, 25), f"ASIENTO: {b.get('Asiento')}", fill=(0, 0, 0), font=fuente_texto)
-    d.text((30, 60), f"FILA: {b.get('Fila')}", fill=(0, 0, 0), font=fuente_texto)
-    d.text((30, 95), f"ZONA: {b.get('Zona')}", fill=(0, 0, 0), font=fuente_texto)
-    d.text((30, 130), f"CLIENTE: {b.get('Datos Cliente')}", fill=(0, 0, 0), font=fuente_texto)
-    d.text((30, 165), f"VENDEDOR: {b.get('Vendedor')}", fill=(0, 0, 0), font=fuente_texto)
-    
-    d.text((30, 200), f"FECHA VENTA: {fecha_mostrar}", fill=(0, 0, 0), font=fuente_texto)
+    d.text((130, 625), f"ASIENTO: {b.get('Asiento')}", fill=(255, 255, 255), font=fuente_texto)
+    d.text((130, 670), f"FILA: {b.get('Fila')}", fill=(255, 255, 255), font=fuente_texto)
+    d.text((130, 715), f"ZONA: {b.get('Zona')}", fill=(255, 255, 255), font=fuente_texto)
+    d.text((130, 750), f"CLIENTE: {b.get('Datos Cliente')}", fill=(255, 255, 255), font=fuente_texto)
+    d.text((130, 795), f"VENDEDOR: {b.get('Vendedor')}", fill=(255, 255, 255), font=fuente_texto)
+    d.text((130, 840), f"FECHA VENTA: {fecha_mostrar}", fill=(255, 255, 255), font=fuente_texto)
     
     buf = io.BytesIO()
     img.save(buf, format='PNG')
