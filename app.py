@@ -426,12 +426,6 @@ if df is not None and not df.empty:
         .escenario { font-size: 13px !important; }
     }
     
-    @media (max-width: 767px) {
-        .label-fila { font-size: 8px !important; }
-        .label-fila-derecha { font-size: 8px !important; }
-        .texto-vertical { font-size: 8px !important; letter-spacing: 1px !important; }
-        .asiento-link { font-size: 8px !important; }
-    }
     </style>"""
 
     # --- CONSTRUCCIÓN DEL HTML ---
