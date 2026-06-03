@@ -152,7 +152,7 @@ def mostrar_formulario_modal(b):
     if estado_actual in ["Ocupado", "Reservado"]:
         img_bytes = generar_imagen_comprobante(b)
         st.download_button(
-            label="Descargar Boleto",
+            label="Descargar",
             data=img_bytes,
             file_name=f"Boleto_{b.get('Zona')}_{b.get('Fila')}_{b.get('Asiento')}.png",
             mime="image/png",
