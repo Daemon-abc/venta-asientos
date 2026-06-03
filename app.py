@@ -2,6 +2,53 @@ import streamlit as st
 from st_supabase_connection import SupabaseConnection
 import pandas as pd
 from datetime import datetime
+from PIL import Image, ImageDraw, ImageFont
+import io
+from datetime import datetime, timedelta
+
+def generar_imagen_comprobante(b):
+    try:
+        img = Image.open("plantilla_boleto.png").convert('RGB') 
+    except FileNotFoundError:
+        img = Image.new('RGB', (400, 250), color=(255, 255, 255))
+    
+    d = ImageDraw.Draw(img)
+    
+    try:
+        fuente_titulo = ImageFont.truetype("Ticketing.ttf", 20)
+        fuente_texto = ImageFont.truetype("Ticketing.ttf", 20)
+    except IOError:
+        fuente_titulo = ImageFont.load_default()
+        fuente_texto = ImageFont.load_default()
+    
+    # --- PROCESAR LA FECHA GUARDADA ---
+    fecha_guardada = b.get('Fecha', '')
+    fecha_mostrar = ""
+
+    if fecha_guardada and str(fecha_guardada).lower() not in ['nan', 'none', 'null', '']:
+        try:
+            # Supabase suele guardar la fecha como 'YYYY-MM-DD HH:MM:SS'
+            # Lo convertimos a un objeto datetime para darle un formato más bonito
+            dt = datetime.strptime(str(fecha_guardada).split(".")[0], "%Y-%m-%d %H:%M:%S")
+            fecha_mostrar = dt.strftime('%d/%m/%Y %H:%M')
+        except ValueError:
+            # Si por alguna razón el formato de la cadena varía, mostramos el texto tal cual viene
+            fecha_mostrar = str(fecha_guardada)
+    else:
+        fecha_mostrar = "No registrada"
+
+    # --- DIBUJAR LOS TEXTOS ---
+    d.text((30, 25), f"ASIENTO: {b.get('Asiento')}", fill=(0, 0, 0), font=fuente_texto)
+    d.text((30, 60), f"FILA: {b.get('Fila')}", fill=(0, 0, 0), font=fuente_texto)
+    d.text((30, 95), f"ZONA: {b.get('Zona')}", fill=(0, 0, 0), font=fuente_texto)
+    d.text((30, 130), f"CLIENTE: {b.get('Datos Cliente')}", fill=(0, 0, 0), font=fuente_texto)
+    d.text((30, 165), f"VENDEDOR: {b.get('Vendedor')}", fill=(0, 0, 0), font=fuente_texto)
+    
+    d.text((30, 200), f"FECHA VENTA: {fecha_mostrar}", fill=(0, 0, 0), font=fuente_texto)
+    
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    return buf.getvalue()
 
 # Configuración de pantalla optimizada para celulares
 st.set_page_config(page_title="Venta de Butacas", layout="centered")
@@ -38,37 +85,39 @@ def cargar_datos_db(forzar=False):
 # Cargar datos iniciales
 cargar_datos_db()
 
-# =========================================================================
-# NUEVO: MODAL FLOTANTE DE EDICIÓN (Reemplaza la Pantalla 2 anterior)
-# =========================================================================
 @st.dialog("📝 Editar Información")
 def mostrar_formulario_modal(b):
     st.markdown(f"📍 **{b.get('Zona')}** — Fila {b.get('Fila')}, Asiento {b.get('Asiento')}")
     
-    with st.form("form_edicion_rapida"):
-        opciones_estado = ["Disponible", "Ocupado", "Reservado", "Bloqueado"]
-        estado_actual = b.get('Estado', 'Disponible')
-        idx_estado = opciones_estado.index(estado_actual) if estado_actual in opciones_estado else 0
-        
-        # CAMBIO: Solo se reemplazó el selectbox por las píldoras nativas (Botones)
-        nuevo_estado = st.pills("Estado del asiento:", options=opciones_estado, default=opciones_estado[idx_estado])
-        
-        def obtener_valor(campo):
-            v = str(b.get(campo, ''))
-            return "" if v.lower() in ['nan', 'none', 'null', ''] else v
+    # Mensaje de éxito persistente tras guardar
+    if st.session_state.get("guardado_reciente_id") == b['ID_Asiento']:
+        st.success("¡Guardado correctamente!")
+        st.session_state["guardado_reciente_id"] = None
 
-        cliente = st.text_input("Nombre del Cliente:", value=obtener_valor('Datos Cliente'))
-        celular = st.text_input("Celular:", value=obtener_valor('Celular'))
-        vendedor = st.text_input("Vendedor:", value=obtener_valor('Vendedor'))
-        
-        # 'Registrado Por' eliminado de aquí
-                
-        st.write("<br>", unsafe_allow_html=True)
-        guardar = st.form_submit_button("Guardar Cambios 💾", use_container_width=True)
+    # Opciones de Estado usando st.pills
+    opciones_estado = ["Disponible", "Ocupado", "Reservado", "Bloqueado"]
+    estado_actual = b.get('Estado', 'Disponible')
+    idx_estado = opciones_estado.index(estado_actual) if estado_actual in opciones_estado else 0
+    
+    # Agregamos una clave única (key) para evitar conflictos en re-ejecuciones
+    nuevo_estado = st.pills("Estado del asiento:", options=opciones_estado, default=opciones_estado[idx_estado], key=f"pill_{b['ID_Asiento']}")
+    
+    def obtener_valor(campo):
+        v = str(b.get(campo, ''))
+        return "" if v.lower() in ['nan', 'none', 'null', ''] else v
+
+    # Inputs de texto normales con claves únicas asociadas al ID del asiento
+    cliente = st.text_input("Nombre del Cliente:", value=obtener_valor('Datos Cliente'), key=f"cli_{b['ID_Asiento']}")
+    celular = st.text_input("Celular:", value=obtener_valor('Celular'), key=f"cel_{b['ID_Asiento']}")
+    vendedor = st.text_input("Vendedor:", value=obtener_valor('Vendedor'), key=f"ven_{b['ID_Asiento']}")
+    
+    st.write("<br>", unsafe_allow_html=True)
+    
+    # Botón normal de Streamlit
+    guardar = st.button("Guardar Cambios 💾", use_container_width=True)
         
     if guardar:
         with st.spinner("Guardando..."):
-            # 1. Definimos los datos nuevos para la butaca actual
             if nuevo_estado == "Disponible":
                 datos_nuevos = {
                     "Estado": "Disponible", "Datos Cliente": "", "Celular": "",
@@ -77,13 +126,13 @@ def mostrar_formulario_modal(b):
             else:
                 datos_nuevos = {
                     "Estado": nuevo_estado, "Datos Cliente": cliente, "Celular": celular,
-                    "Vendedor": vendedor, "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    "Vendedor": vendedor, "Fecha": (datetime.utcnow() - timedelta(hours=4)).strftime("%Y-%m-%d %H:%M:%S")
                 }
                 
-            # 2. Actualizamos la butaca principal en Supabase (Tu lógica original)
+            # Guardar en Supabase
             conn.table("butacas").update(datos_nuevos).eq("ID_Asiento", b['ID_Asiento']).execute()
             
-            # 3. NUEVO: Insertamos el registro en la tabla de historial
+            # Guardar Historial
             datos_historial = {
                 "id_asiento": str(b.get('ID_Asiento')),
                 "zona": str(b.get('Zona')),
@@ -93,21 +142,38 @@ def mostrar_formulario_modal(b):
                 "estado_nuevo": nuevo_estado,
                 "cliente": cliente,
                 "celular": celular,
-                "vendedor": vendedor  # Registra el nombre ingresado en el campo Vendedor
+                "vendedor": vendedor
             }
             try:
                 conn.table("historial_butacas").insert(datos_historial).execute()
-            except Exception as e:
-                # Si falla el historial por alguna razón, que no interrumpa el flujo principal
+            except Exception:
                 pass
 
-            # 4. Refrescamos la base de datos local y cerramos modal
+            # Refrescamos la BD local inmediatamente
             cargar_datos_db(forzar=True)
-            st.success("¡Guardado e historial registrado correctamente!")
+            
+            # Guardamos la bandera para el mensaje de éxito
+            st.session_state["guardado_reciente_id"] = b['ID_Asiento']
+            
+            # Limpiamos los query params para asegurarnos de que el mapa de fondo no intente duplicar llamadas
+            st.query_params.clear()
+            # Forzamos la reapertura limpia del formulario pasándole los nuevos datos directamente
+            st.query_params["sel_id"] = b['ID_Asiento']
             st.rerun()
 
+    # --- BOTÓN DE DESCARGA DINÁMICO ---
+    if estado_actual in ["Ocupado", "Reservado"]:
+        img_bytes = generar_imagen_comprobante(b)
+        st.download_button(
+            label="📸 Descargar Boleto",
+            data=img_bytes,
+            file_name=f"Boleto_{b.get('Fila')}_{b.get('Asiento')}.png",
+            mime="image/png",
+            use_container_width=True,
+            key=f"dl_{b['ID_Asiento']}" # Clave única para evitar errores de duplicados
+        )
 
-# --- 4. DETECTAR CLIC INMEDIATO DESDE EL MAPA ---
+# --- 4. DETECTAR CLIC INMEDIATO DESDE EL MAPA O REFRESCADO DE FORMULARIO ---
 query_params = st.query_params
 if "sel_id" in query_params:
     id_id = query_params["sel_id"]
@@ -121,10 +187,9 @@ if "sel_id" in query_params:
 
 
 ## =========================================================================
-# PANTALLA PRINCIPAL: MAPA (Fuerza Bruta en una sola línea)
-# =========================================================================
+# PANTALLA PRINCIPAL: MAPA
+## =========================================================================
 
-# Usamos un contenedor HTML flexible que agrupa el título a la izquierda y el botón de refrescar nativo de Streamlit
 st.markdown("""
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
         <h3 style="margin: 0; padding: 0;">JARDÍN DE MELODIAS</h3>
@@ -141,13 +206,10 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-
-# Capturamos si le dieron clic al botón 🔄 inyectado en el HTML
 if st.query_params.get("refresh") == "true":
-    st.query_params.clear()  # Limpiamos la URL de inmediato
+    st.query_params.clear()
     cargar_datos_db(forzar=True)
     st.rerun()
-
 
 df = st.session_state.datos_butacas
 
@@ -158,25 +220,25 @@ if df is not None and not df.empty:
         .fila-contenedor { 
             display: flex; 
             align-items: center; 
-            justify-content: flex-start; /* 🆕 Cambiamos de center a flex-start */
-            gap: 1px;                    /* 🆕 Quitamos el gap automático */
+            justify-content: flex-start; 
+            gap: 1px; 
             padding: 1px 0; 
             width: 100%;
             overflow: hidden; 
             white-space: nowrap;
-            margin-left: 2px;            /* 🆕 Margen constante para todas las filas */
+            margin-left: 2px; 
         }
         .label-fila { 
             font-weight: bold; 
-            width: 34px !important;      /* 🆕 Aumentado de 28px a 34px para dar espacio cómodo a "M-F1" */
-            min-width: 34px !important;  /* 🆕 Bloquea el ancho mínimo en celulares */
-            max-width: 34px !important;  /* 🆕 Bloquea el ancho máximo para que nada se mueva */
+            width: 34px !important; 
+            min-width: 34px !important; 
+            max-width: 34px !important; 
             color: var(--text-color) !important; 
             opacity: 0.6;
-            font-size: 10px;             /* Un puntito más chico para que "M-F1" entre holgado */
+            font-size: 10px; 
             text-align: center; 
             margin-right: 4px; 
-            display: inline-block;       /* Fuerza a respetar el ancho en bloques de texto */
+            display: inline-block; 
         }
         .asiento-link {
             display: inline-block; 
@@ -202,8 +264,8 @@ if df is not None and not df.empty:
             margin-bottom: 4px;   
             font-size: 12px;      
             text-align: center;
-            color: var(--text-color) !important; /* 🆕 Cambia automáticamente a blanco o negro según el tema del celular */
-            opacity: 0.85; /* Le da un tono elegante para que no sea un color tan chillón */
+            color: var(--text-color) !important; 
+            opacity: 0.85; 
         }
         .escenario {
             background-color: #34495E;
@@ -213,7 +275,7 @@ if df is not None and not df.empty:
             font-weight: bold;
             font-size: 13px;
             border-radius: 4px;
-            margin-bottom: 6px; /* 🆕 Bajó de 15px a 6px para acercar el escenario a la Fila 1 */
+            margin-bottom: 6px; 
             letter-spacing: 2px;
         }
         .col-disponible { background-color: #2ECC71 !important; } 
@@ -225,7 +287,6 @@ if df is not None and not df.empty:
         <div class="escenario">ESCENARIO</div>
     """
 
-    # --- 1. TITULO: VIP ---
     html_mapa += '<div class="seccion-titulo">VIP</div>'
     
     estructura_inferior = {
@@ -265,7 +326,6 @@ if df is not None and not df.empty:
         if f == 7:
             html_mapa += '<div class="seccion-titulo">PLATEA</div>'
 
-    # --- 2. TITULO: MEZZANINE ---
     df_mezz = df[df['Zona'] == 'MEZZANINE']
     if not df_mezz.empty:
         html_mapa += '<div class="seccion-titulo">MEZZANINE</div>'
