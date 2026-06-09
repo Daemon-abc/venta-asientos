@@ -544,7 +544,7 @@ if df is not None and not df.empty:
     t_rese = len(df[df['Estado_Clean'] == "Reservado"])
     t_bloq = len(df[df['Estado_Clean'] == "Bloqueado"])
     
-    st.markdown("<hr style='margin: 20px 0; opacity: 0.2;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin: 50px 0; opacity: 0.2;'>", unsafe_allow_html=True)
     
     # Inyectamos el HTML directo dividiendo las partes para que Python no se confunda
     st.markdown(
