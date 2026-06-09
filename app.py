@@ -531,3 +531,52 @@ if df is not None and not df.empty:
     html_mapa += '</div></div><br>'
     
     st.markdown(html_mapa, unsafe_allow_html=True)
+
+
+
+   # =========================================================================
+    # 💡 CONTADORES EN CASMADA: FORMATO DIRECTO (SIN VARIABLES TEXTUALES)
+    # =========================================================================
+    df['Estado_Clean'] = df['Estado'].astype(str).str.strip()
+    
+    t_disp = len(df[df['Estado_Clean'] == "Disponible"])
+    t_ocup = len(df[df['Estado_Clean'] == "Ocupado"])
+    t_rese = len(df[df['Estado_Clean'] == "Reservado"])
+    t_bloq = len(df[df['Estado_Clean'] == "Bloqueado"])
+    
+    st.markdown("<hr style='margin: 20px 0; opacity: 0.2;'>", unsafe_allow_html=True)
+    
+    # Inyectamos el HTML directo dividiendo las partes para que Python no se confunda
+    st.markdown(
+        '<div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: 10px; text-align: center;">'
+            '<div style="flex: 1;">'
+                '<div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px;">'
+                    '<span class="circulo-color col-disponible"></span>'
+                    '<b style="font-size: 0.7rem;">Disponibles</b>'
+                '</div>'
+                '<div style="font-size: 1.4rem; font-weight: 700; color: #2ECC71;">' + str(t_disp) + '</div>'
+            '</div>'
+            '<div style="flex: 1;">'
+                '<div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px;">'
+                    '<span class="circulo-color col-ocupado"></span>'
+                    '<b style="font-size: 0.7rem;">Ocupados</b>'
+                '</div>'
+                '<div style="font-size: 1.4rem; font-weight: 700; color: #E74C3C;">' + str(t_ocup) + '</div>'
+            '</div>'
+            '<div style="flex: 1;">'
+                '<div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px;">'
+                    '<span class="circulo-color col-reservado"></span>'
+                    '<b style="font-size: 0.7rem;">Reservados</b>'
+                '</div>'
+                '<div style="font-size: 1.4rem; font-weight: 700; color: #F1C40F;">' + str(t_rese) + '</div>'
+            '</div>'
+            '<div style="flex: 1;">'
+                '<div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px;">'
+                    '<span class="circulo-color col-bloqueado"></span>'
+                    '<b style="font-size: 0.7rem;">Bloqueados</b>'
+                '</div>'
+                '<div style="font-size: 1.4rem; font-weight: 700; color: #7F8C8D;">' + str(t_bloq) + '</div>'
+            '</div>'
+        '</div>', 
+        unsafe_allow_html=True
+    )
